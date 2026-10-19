@@ -152,33 +152,72 @@ function checkFileBoundaryInvariant(filePath, lineCount, maxLines, strictMode) {
   return [];
 }
 
-function checkBrandIntegrity(filePath, content) {
+function checkBrandIntegrity(filePath, content, fixMode) {
   const violations = [];
   if (![".html", ".xml", ".md", ".json"].includes(path.extname(filePath).toLowerCase())) {
     return violations;
   }
 
-  const obsoletePatterns = [
-    { pattern: /frcem100\.drlizlondon\.workers\.dev/g, replacement: "webuildforgood.com/frcem100/" },
-    { pattern: /drlizlondon\.github\.io\/departure-alarm/g, replacement: "webuildforgood.com/departure-alarm/" },
+  const obsoleteRules = [
+    {
+      name: "frcem100-staging",
+      test: /frcem100\.drlizlondon\.workers\.dev/,
+      canonical: "https://webuildforgood.com/frcem100/",
+      fix: (str) =>
+        str
+          .replace(/https?:\/\/frcem100\.drlizlondon\.workers\.dev\/?/g, "https://webuildforgood.com/frcem100/")
+          .replace(/frcem100\.drlizlondon\.workers\.dev/g, "webuildforgood.com/frcem100/"),
+    },
+    {
+      name: "departure-alarm-staging",
+      test: /drlizlondon\.github\.io\/departure-alarm/,
+      canonical: "https://webuildforgood.com/departure-alarm/",
+      fix: (str) =>
+        str
+          .replace(/https?:\/\/drlizlondon\.github\.io\/departure-alarm\/?/g, "https://webuildforgood.com/departure-alarm/")
+          .replace(/drlizlondon\.github\.io\/departure-alarm/g, "webuildforgood.com/departure-alarm/"),
+    },
   ];
 
+  let modified = false;
+  let newContent = content;
   const lines = content.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    for (const { pattern, replacement } of obsoletePatterns) {
-      if (pattern.test(line)) {
-        violations.push({
-          rule: "rule-brand-integrity",
-          file: filePath,
-          line: i + 1,
-          column: 1,
-          message: `Obsolete staging domain detected. Use canonical studio route (${replacement}).`,
-          severity: "error",
-        });
+    for (const rule of obsoleteRules) {
+      if (rule.test.test(line)) {
+        if (fixMode) {
+          violations.push({
+            rule: "rule-brand-integrity",
+            file: filePath,
+            line: i + 1,
+            column: 1,
+            message: `Repaired obsolete staging domain to canonical studio route (${rule.canonical}).`,
+            severity: "info",
+            fixed: true,
+          });
+          modified = true;
+        } else {
+          violations.push({
+            rule: "rule-brand-integrity",
+            file: filePath,
+            line: i + 1,
+            column: 1,
+            message: `Obsolete staging domain detected. Use canonical studio route (${rule.canonical}).`,
+            severity: "error",
+          });
+        }
       }
     }
   }
+
+  if (fixMode && modified) {
+    for (const rule of obsoleteRules) {
+      newContent = rule.fix(newContent);
+    }
+    fs.writeFileSync(filePath, newContent, "utf8");
+  }
+
   return violations;
 }
 
@@ -246,7 +285,7 @@ function run() {
       const lineCount = content.split("\n").length;
       allViolations.push(...checkEmDashInvariant(file, content, options.fix));
       allViolations.push(...checkFileBoundaryInvariant(file, lineCount, options.maxLines, options.strict));
-      allViolations.push(...checkBrandIntegrity(file, content));
+      allViolations.push(...checkBrandIntegrity(file, content, options.fix));
     } catch {
       // Skip unreadable files
     }

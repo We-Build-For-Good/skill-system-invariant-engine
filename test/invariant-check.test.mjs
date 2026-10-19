@@ -94,3 +94,21 @@ test("detects obsolete staging domains in public HTML", () => {
     assert.equal(result.violations[0].rule, "rule-brand-integrity");
   }
 });
+
+test("--fix automatically repairs obsolete staging domains", () => {
+  const htmlFile = path.join(TMP_DIR, "index.html");
+  fs.writeFileSync(
+    htmlFile,
+    '<link rel="canonical" href="https://drlizlondon.github.io/departure-alarm/">\n',
+    "utf8",
+  );
+
+  const cmd = `node "${CLI_PATH}" --dir "${TMP_DIR}" --fix --json`;
+  const output = execSync(cmd, { encoding: "utf8" });
+  const result = JSON.parse(output);
+
+  const repaired = fs.readFileSync(htmlFile, "utf8");
+  assert.equal(repaired.includes("drlizlondon"), false);
+  assert.equal(repaired, '<link rel="canonical" href="https://webuildforgood.com/departure-alarm/">\n');
+});
+
