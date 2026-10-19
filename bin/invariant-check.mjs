@@ -76,7 +76,12 @@ function getFilesToInspect(targetDir, stagedOnly) {
 
   const results = [];
   function walk(currentDir) {
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    let entries = [];
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    } catch {
+      return; // Skip directories without read permission
+    }
     for (const entry of entries) {
       if (DEFAULT_IGNORE.includes(entry.name)) continue;
       const fullPath = path.join(currentDir, entry.name);
