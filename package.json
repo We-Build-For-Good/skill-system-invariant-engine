@@ -1,7 +1,7 @@
 {
   "name": "@webuildforgood/skill-system-invariant-engine",
-  "version": "1.0.0",
-  "description": "Deterministic pre-commit and CI verification gate enforcing character invariants, file boundaries, brand separation, and Prettier code formatting.",
+  "version": "2.0.0",
+  "description": "Pre-commit and CI gate that enforces the rules a repository writes in invariants.json: forbidden text with automatic fixes, file-size limits, and Prettier.",
   "main": "bin/invariant-check.mjs",
   "bin": {
     "wb4g-invariants": "bin/invariant-check.mjs"
@@ -15,12 +15,20 @@
   "keywords": [
     "invariants",
     "pre-commit",
+    "commit-msg",
     "linter",
-    "agentic-ai",
-    "code-hygiene",
-    "prettier",
-    "antigravity"
+    "ai-agents",
+    "prettier"
   ],
   "author": "We Build for Good",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "bin",
+    "lib",
+    "invariants.json",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
 }

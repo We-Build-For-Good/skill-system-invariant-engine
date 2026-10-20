@@ -1,37 +1,31 @@
 {
-  "name": "we-build-for-good-invariants",
-  "version": "1.0.0",
-  "description": "Canonical manifest of studio invariants and code standards.",
+  "name": "default-invariants",
+  "version": "2.0.0",
+  "description": "Default rules, used when the checked repository has no invariants.json of its own. Copy this file into your repo and edit it to choose your own rules.",
   "rules": [
     {
-      "id": "rule-format-prettier",
-      "description": "Code must strictly match Prettier formatting standard.",
-      "severity": "error",
-      "autoFixable": true,
-      "config": {
-        "printWidth": 100,
-        "tabWidth": 2,
-        "semi": true,
-        "singleQuote": false,
-        "trailingComma": "all"
-      }
-    },
-    {
       "id": "rule-syntax-em-dash",
-      "description": "Strict prohibition of em dashes in all code, commits, and public copy. Use colons, commas, or parentheses.",
+      "type": "forbidden-text",
+      "description": "No em dashes: use colons, commas, or parentheses.",
+      "message": "Em dash found. Use a colon, comma, or parentheses instead.",
       "severity": "error",
-      "autoFixable": true,
-      "pattern": "\\u2014"
+      "pattern": "\u2014",
+      "fixes": [
+        { "pattern": " \u2014 ", "replace": ": " },
+        { "pattern": "\u2014", "replace": ", " }
+      ]
     },
     {
       "id": "rule-file-boundary",
-      "description": "Single source code files should not exceed 400 lines to prevent monolithic unmaintainable code.",
+      "type": "file-boundary",
+      "description": "Source files should stay under 400 lines.",
       "severity": "warning",
       "threshold": 400
     },
     {
-      "id": "rule-brand-integrity",
-      "description": "Public copy and links must use sovereign studio domains and exclude obsolete staging handles.",
+      "id": "rule-format-prettier",
+      "type": "prettier",
+      "description": "Files match the repo's own Prettier config (only runs when the repo configures Prettier).",
       "severity": "error"
     }
   ]

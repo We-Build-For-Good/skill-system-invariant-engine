@@ -1,0 +1,31 @@
+{
+  "name": "example-brand-domains",
+  "description": "Example: the default rules plus brand rules that replace retired staging domains with canonical ones. Copy to your repo as invariants.json and put your own domains in.",
+  "rules": [
+    {
+      "id": "rule-syntax-em-dash",
+      "type": "forbidden-text",
+      "message": "Em dash found. Use a colon, comma, or parentheses instead.",
+      "pattern": "\u2014",
+      "fixes": [
+        { "pattern": " \u2014 ", "replace": ": " },
+        { "pattern": "\u2014", "replace": ", " }
+      ]
+    },
+    {
+      "id": "rule-brand-old-staging-domain",
+      "type": "forbidden-text",
+      "description": "Retired staging domain replaced with the canonical one.",
+      "message": "Retired staging domain. Use https://www.example.com/app/ instead.",
+      "extensions": [".html", ".xml", ".md", ".json"],
+      "checkCommitMessages": false,
+      "pattern": "old-app\\.example-staging\\.dev",
+      "fixes": [
+        { "pattern": "https?://old-app\\.example-staging\\.dev/?", "replace": "https://www.example.com/app/" },
+        { "pattern": "old-app\\.example-staging\\.dev", "replace": "www.example.com/app/" }
+      ]
+    },
+    { "id": "rule-file-boundary", "type": "file-boundary", "severity": "warning", "threshold": 400 },
+    { "id": "rule-format-prettier", "type": "prettier", "severity": "error" }
+  ]
+}

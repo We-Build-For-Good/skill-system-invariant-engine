@@ -1,65 +1,74 @@
 # System Invariant Engine (`skill-system-invariant-engine`)
 
-Deterministic pre-commit and CI verification gate enforcing character invariants, file boundaries, brand boundaries, and Prettier code formatting across digital studio repositories.
+A zero-dependency pre-commit and CI check that enforces the rules you write down in `invariants.json`: forbidden text (with optional automatic fixes), a file-size limit, and Prettier formatting.
 
-Part of the **We Build for Good Open Source Skills Library**.
-
----
-
-## Why This Exists
-
-Autonomous AI coding agents can write thousands of lines of syntactically valid code in minutes. However, language models inevitably suffer from cognitive drift over extended multi-hour sessions:
-- They forget subtle negative constraints (e.g. strict prohibition of specific punctuation).
-- They introduce formatting inconsistencies that clutter git diffs.
-- They generate monolithic 2,000-line "god files" that are impenetrable to human review.
-- They accidentally re-introduce outdated staging domains or personal URLs into public-facing releases.
-
-Relying on prompt memory to maintain code hygiene is a known failure mode. The **System Invariant Engine** replaces probabilistic prompt compliance with fast, deterministic Node.js verification gates that execute before code is ever committed or deployed.
+Part of the **We Build for Good** open-source skills library.
 
 ---
 
-## What It Checks
+## Why this exists
 
-1. **Prettier Code Formatting (`rule-format-prettier`):** Ensures all files strictly match studio formatting standards (`printWidth: 100`, `singleQuote: false`, `trailingComma: "all"`).
-2. **Zero Em Dashes (`rule-syntax-em-dash`):** Scans for forbidden em dashes (Unicode `\u2014`), requiring colons, commas, or parentheses instead.
-3. **Modularity Boundary (`rule-file-boundary`):** Enforces a 400-line modularity threshold on source code files to ensure legibility for external engineering teams.
-4. **Brand & Domain Sovereignty (`rule-brand-integrity`):** Validates that all public metadata references production routes rather than legacy development subdomains.
+AI coding agents forget negative rules over long sessions ("never use X", "never link to the old domain"). A rule written in a prompt relies on the model remembering it. A rule written in a config file and checked before every commit does not.
+
+## What it checks
+
+Rules live in a JSON file. The engine uses, in order: `--config <file>`, then `invariants.json` or `.invariants.json` in the repo being checked, then its own [default `invariants.json`](invariants.json).
+
+| Rule type | What it does | Default |
+|---|---|---|
+| `forbidden-text` | Fails when a regular expression matches. Optional `fixes` are applied by `--fix`. Optional `extensions` limits which files it applies to. | One rule: no em dashes (our house style; turn it off with `"enabled": false`) |
+| `file-boundary` | Warns when a source file is longer than `threshold` lines | 400 lines, warning only |
+| `prettier` | Runs `prettier --check`, but only in repos that configure Prettier. If the repo configures Prettier and it is not installed, that is reported as a warning, never as a pass. | On |
+
+See [`examples/brand-domains.invariants.json`](examples/brand-domains.invariants.json) for a config that also replaces a retired staging domain with the live one.
+
+What it scans: in a git repository, every tracked and untracked file that `.gitignore` does not exclude (so build output is skipped). Outside git, everything except common build and dependency folders. Binary files and lockfiles are skipped.
 
 ---
 
-## Quick Start
-
-### Installation
-Clone into your tools directory or install as a dev dependency:
+## Usage
 
 ```bash
-git clone https://github.com/We-Build-For-Good/skill-system-invariant-engine.git
+node bin/invariant-check.mjs                         # check the current directory
+node bin/invariant-check.mjs --dir path/to/repo      # check another directory
+node bin/invariant-check.mjs --fix                   # apply the configured fixes
+node bin/invariant-check.mjs --staged                # check what is staged (pre-commit)
+node bin/invariant-check.mjs --message-file .git/COMMIT_EDITMSG   # check a commit message
+node bin/invariant-check.mjs --strict --json         # CI: warnings fail, JSON output
 ```
 
-### Running Checks
-```bash
-# Scan entire directory
-node bin/invariant-check.mjs
+Exit codes: `0` passed, `1` violations found, `2` bad options or an unreadable config.
 
-# Automatically repair fixable violations (em dashes, formatting)
-node bin/invariant-check.mjs --fix
+`--staged` reads the staged version of each file (what will actually be committed), not the working copy. `--fix` cannot be combined with `--staged`, because it would change files without restaging them. Review `--fix` changes before committing: replacing text inside code changes what the code outputs.
 
-# Scan only git staged files before commit
-node bin/invariant-check.mjs --staged
+### Git hooks
 
-# Strict mode: treat warnings as blocking errors
-node bin/invariant-check.mjs --strict
-```
-
-### Git Hook Integration
-Install into `.git/hooks/pre-commit`:
+`.git/hooks/pre-commit`:
 ```bash
 #!/usr/bin/env bash
 node path/to/skill-system-invariant-engine/bin/invariant-check.mjs --staged
 ```
 
+`.git/hooks/commit-msg`:
+```bash
+#!/usr/bin/env bash
+node path/to/skill-system-invariant-engine/bin/invariant-check.mjs --message-file "$1"
+```
+
+### GitHub Actions
+```yaml
+- name: Check invariants
+  run: node path/to/skill-system-invariant-engine/bin/invariant-check.mjs --strict
+```
+
 ---
+
+## Tests
+
+```bash
+npm test
+```
 
 ## License
 
-MIT © [We Build for Good](https://webuildforgood.com)
+MIT. [We Build for Good](https://webuildforgood.com)

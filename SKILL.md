@@ -1,10 +1,10 @@
 ---
 name: system-invariant-engine
-description: Deterministic pre-commit and CI verification gate. Enforces character-level invariants (zero em dashes), modular file boundaries, brand boundaries, and Prettier code legibility. Use before committing code, running PR checks, or releasing production artifacts.
+description: Pre-commit and CI gate that enforces the rules a repository writes in invariants.json (forbidden text with automatic fixes, file-size limits, Prettier). Use when setting up commit hooks or CI checks, or whenever a rule an AI agent keeps forgetting should become a mechanical check.
 license: MIT
 metadata:
   author: We Build for Good
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # System Invariant Engine: Deterministic Studio Compliance
@@ -14,7 +14,7 @@ Language models drift. Over a multi-hour session across multiple repositories, a
 A prompt instructing an agent to check the rules still relies on probabilistic model memory. 
 An **executable gate that mechanically rejects violations** is a fundamentally different class of capability.
 
-The **System Invariant Engine** establishes deterministic pre-commit and continuous integration gates that enforce studio invariants, code legibility, and architectural modularity before any work leaves the machine.
+The **System Invariant Engine** turns those rules into a pre-commit and CI check that runs before any work leaves the machine.
 
 ---
 
@@ -26,80 +26,30 @@ If a rule can be expressed as a character check, a line boundary, or a formatted
 
 ---
 
-## Core Invariant Rules
+## How to use it
 
-### Rule 1: Code Legibility & Universal Prettier (`rule-format-prettier`)
-* **Standard:** Every repository enforces standard Prettier formatting.
-* **Standard Configuration:**
-  ```json
-  {
-    "printWidth": 100,
-    "tabWidth": 2,
-    "semi": true,
-    "singleQuote": false,
-    "trailingComma": "all"
-  }
-  ```
-* **Verification:** Pull request diffs contain zero whitespace noise or arbitrary line-wrapping changes. Every diff reflects pure logical intent.
+1. **Write the rule down as config, not as a prompt.** Copy [`invariants.json`](invariants.json) into the repository and edit it. Each rule has an `id`, a `type`, a `severity` (`error` or `warning`), and type-specific settings:
+   * `forbidden-text`: a `pattern` (regular expression), optional `fixes` (`pattern` and `replace` pairs used by `--fix`), optional `extensions`, and `checkCommitMessages` (default true).
+   * `file-boundary`: a `threshold` line count and optional `extensions`.
+   * `prettier`: runs only when the repository configures Prettier.
+   * Any rule can be switched off with `"enabled": false`.
+2. **Install the hooks** so the check runs on every commit: `--staged` in `pre-commit`, `--message-file "$1"` in `commit-msg` (see README).
+3. **Run it in CI** with `--strict` so warnings also fail.
+4. **When the agent breaks a rule, add the rule here** rather than repeating the instruction in the prompt.
 
-### Rule 2: Syntax Invariant: Strict Zero Em Dashes (`rule-syntax-em-dash`)
-* **Standard:** The em dash character (Unicode `\u2014`) is strictly prohibited across all code, commits, comments, and public marketing copy.
-* **Allowed Replacements:** Use colons, commas, or parentheses.
-* **Automatic Repair:** The engine automatically replaces em dashes with colons or commas when run with `--fix`.
+The default rules are: no em dashes (our house style), source files under 400 lines (warning), and Prettier where the repository configures it. They apply only when the repository has no `invariants.json` of its own.
 
-### Rule 3: Architectural Modularity & File Size Gate (`rule-file-boundary`)
-* **Standard:** Single source code files should not exceed 400 lines without an explicit architectural exemption.
-* **Rationale:** Monolithic files of 1,500+ lines are unmaintainable for human engineers and prone to silent AI regression. Code must be cleanly decomposed into pure domain logic, I/O adapters, and presentation components.
+## Honest limits
 
-### Rule 4: Brand & Domain Sovereignty (`rule-brand-integrity`)
-* **Standard:** Public-facing HTML, XML sitemaps, and documentation must reference canonical production endpoints (e.g. `webuildforgood.com/frcem100/`) and strictly exclude obsolete development subdomains or staging handles.
+* `--fix` rewrites text wherever the pattern matches, including inside code. Review the diff.
+* If a repository configures Prettier but Prettier is not installed, formatting is reported as not checked, never as passed.
+* It checks text, not meaning: rules are regular expressions.
 
----
+## CLI
 
-## CLI Usage
-
-### Check Staged Files (Pre-Commit Hook)
 ```bash
-node bin/invariant-check.mjs --staged
-```
-
-### Full Repository Scan
-```bash
-node bin/invariant-check.mjs --dir .
-```
-
-### Automatic Repair Mode
-```bash
-node bin/invariant-check.mjs --dir . --fix
-```
-
-### Strict Mode (Warnings Treated as Errors)
-```bash
-node bin/invariant-check.mjs --dir . --strict
-```
-
-### Machine-Readable JSON Output
-```bash
-node bin/invariant-check.mjs --dir . --json
-```
-
----
-
-## Integration Runbook
-
-### 1. Setting up Git Pre-Commit Hook
-In any repository:
-```bash
-cat << 'EOF' > .git/hooks/pre-commit
-#!/usr/bin/env bash
-node path/to/wb4g-skills/skill-system-invariant-engine/bin/invariant-check.mjs --staged
-EOF
-chmod +x .git/hooks/pre-commit
-```
-
-### 2. CI Verification (GitHub Actions)
-Add to `.github/workflows/ci.yml`:
-```yaml
-- name: Verify Studio Invariants
-  run: node path/to/wb4g-skills/skill-system-invariant-engine/bin/invariant-check.mjs --strict
+node bin/invariant-check.mjs --staged                  # pre-commit
+node bin/invariant-check.mjs --message-file "$1"       # commit-msg
+node bin/invariant-check.mjs --dir . --fix             # apply configured fixes
+node bin/invariant-check.mjs --dir . --strict --json   # CI
 ```
